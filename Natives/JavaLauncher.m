@@ -183,10 +183,10 @@ void init_loadCustomJvmFlags(int* argc, const char** argv) {
 
 static BOOL RuntimeSupportsDebugJITMapping(NSString *javaHome) {
     NSString *marker = [javaHome
-        stringByAppendingPathComponent:@".amethyst-mirror-mapping"];
+        stringByAppendingPathComponent:@".lumencraft-mirror-mapping"];
     NSString *contents = [NSString stringWithContentsOfFile:marker
         encoding:NSUTF8StringEncoding error:nil];
-    return [contents isEqualToString:@"amethyst-mirror-mapping-v1\n"];
+    return [contents isEqualToString:@"lumencraft-mirror-mapping-v1\n"];
 }
 
 static NSString *BundledDebugJITRuntime(int minimumVersion) {

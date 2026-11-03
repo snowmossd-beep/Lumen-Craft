@@ -138,10 +138,10 @@ target_link_libraries(AFNetworking
 )
 
 # MinecraftAccount JNI
-add_library(AmethystAccountJNI SHARED
+add_library(LumenCraftAccountJNI SHARED
   authenticator/MinecraftAccountJNI.m
 )
-target_link_libraries(AmethystAccountJNI)
+target_link_libraries(LumenCraftAccountJNI)
 
 # Audio capture JNI bridge
 add_library(audio_capture SHARED
@@ -151,7 +151,7 @@ target_link_libraries(audio_capture
   "-framework AVFoundation"
 )
 
-# Angel Aura Amethyst
+# Lumen Craft app
 add_executable(LumenCraft
   dyld_bypass_validation.m
   dyld_patch_platform.m
