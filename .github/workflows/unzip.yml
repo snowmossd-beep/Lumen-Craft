@@ -1,23 +1,40 @@
-name: Unzip
+name: Unpack parts
 
 on:
   push:
-    branches: [ main ]
+    paths:
+      - 'LumenCraft-part-*.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: unpack-parts
+  cancel-in-progress: false
 
 jobs:
-  unzip:
+  unpack:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Extract
-        run: unzip -o LumenCraft-files-with-paths.zip
-
-      - name: Commit extracted files
+      - name: Unzip parts
+        run: |
+          shopt -s nullglob
+          parts=(LumenCraft-part-*.zip)
+          if [ ${#parts[@]} -eq 0 ]; then
+            echo "No parts found"
+            exit 0
+          fi
+          for z in "${parts[@]}"; do
+            unzip -oq "$z"
+            rm -f "$z"
+          done
+      - name: Commit
         run: |
           git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add .
-          git commit -m "Extract zip" || echo "Nothing to commit"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Unpack source parts" || exit 0
           git push
+          
