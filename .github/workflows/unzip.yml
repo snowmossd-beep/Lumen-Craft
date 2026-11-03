@@ -12,8 +12,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Extract
-        run: unzip -o Natives-1-code-assets.zip
-
+        run: unzip -o Natives-2-Frameworks.zip
       - name: Commit extracted files
         run: |
           git config user.name "github-actions"
