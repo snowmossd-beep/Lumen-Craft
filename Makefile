@@ -158,16 +158,27 @@ METHOD_PACKAGE = \
 # Where the prebuilt iOS JREs are downloaded from (override with JRE_BASE_URL=... if the CDN is down)
 JRE_BASE_URL ?= https://crystall1ne.dev/cdn/amethyst-ios
 
+# If 1, a JRE (8/17/21) that fails to download is skipped with a warning instead of failing the build.
+JRE_OPTIONAL ?= 1
+
 # Function to download and unpack Java runtimes.
 METHOD_JAVA_UNPACK = \
 	cd $(SOURCEDIR)/depends; \
+	jre_ok=1; \
 	if [ ! -f "java-$(1)-openjdk/release" ] && [ ! -f "$(ls jre$(1)-*.tar.xz)" ]; then \
 		if [ "$(RUNNER)" != "1" ]; then \
-			wget '$(2)' --tries=3 --no-verbose --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 Chrome/120 Safari/537.36' || { echo 'ERROR: failed to download $(2) (wget exit '$$?')'; exit 1; }; \
-			unzip jre*-ios-aarch64.zip && rm jre*-ios-aarch64.zip; \
+			if wget '$(2)' --tries=3 --no-verbose --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 Chrome/120 Safari/537.36'; then \
+				unzip jre*-ios-aarch64.zip && rm jre*-ios-aarch64.zip; \
+			else \
+				echo 'WARNING: could not download $(2)'; \
+				if [ "$(JRE_OPTIONAL)" != "1" ]; then exit 1; fi; \
+				echo 'WARNING: skipping Java $(1) runtime'; jre_ok=0; \
+			fi; \
 		fi; \
-		mkdir -p java-$(1)-openjdk; \
-		tar xvf jre$(1)-*.tar.xz -C java-$(1)-openjdk; \
+		if [ "$$jre_ok" = "1" ]; then \
+			mkdir -p java-$(1)-openjdk; \
+			tar xvf jre$(1)-*.tar.xz -C java-$(1)-openjdk; \
+		fi; \
 	fi
 
 # Function to codesign binaries.
@@ -296,20 +307,20 @@ jre: native
 	if [ -f "$(ls jre*.tar.xz)" ]; then rm $(SOURCEDIR)/depends/jre*.tar.xz; fi; \
 	cd $(SOURCEDIR); \
 	bash $(SOURCEDIR)/scripts/build_jre25.sh; \
-	python3 $(SOURCEDIR)/scripts/patch_jre_mirror_runtime.py 17 $(POJAV_JRE17_DIR)/lib/server/libjvm.dylib; \
-	python3 $(SOURCEDIR)/scripts/patch_jre_mirror_runtime.py --check 17 $(POJAV_JRE17_DIR)/lib/server/libjvm.dylib; \
-	python3 $(SOURCEDIR)/scripts/patch_jre_mirror_runtime.py 21 $(POJAV_JRE21_DIR)/lib/server/libjvm.dylib; \
-	python3 $(SOURCEDIR)/scripts/patch_jre_mirror_runtime.py --check 21 $(POJAV_JRE21_DIR)/lib/server/libjvm.dylib; \
+	for v in 17 21; do \
+		if [ -d $(SOURCEDIR)/depends/java-$$v-openjdk ]; then \
+			python3 $(SOURCEDIR)/scripts/patch_jre_mirror_runtime.py $$v $(SOURCEDIR)/depends/java-$$v-openjdk/lib/server/libjvm.dylib; \
+			python3 $(SOURCEDIR)/scripts/patch_jre_mirror_runtime.py --check $$v $(SOURCEDIR)/depends/java-$$v-openjdk/lib/server/libjvm.dylib; \
+		fi; \
+	done; \
 	rm -rf $(SOURCEDIR)/depends/java-{8,17,21}-openjdk/{ASSEMBLY_EXCEPTION,bin,include,jre,legal,LICENSE,man,THIRD_PARTY_README,lib/{ct.sym,jspawnhelper,libjsig.dylib,src.zip,tools.jar}}; \
 	$(call METHOD_DIRCHECK,$(OUTPUTDIR)/java_runtimes); \
-	cp -R $(POJAV_JRE8_DIR) $(OUTPUTDIR)/java_runtimes; \
-	cp -R $(POJAV_JRE17_DIR) $(OUTPUTDIR)/java_runtimes; \
-	cp -R $(POJAV_JRE21_DIR) $(OUTPUTDIR)/java_runtimes; \
-	cp -R $(POJAV_JRE25_DIR) $(OUTPUTDIR)/java_runtimes; \
-	cp $(WORKINGDIR)/libawt_xawt.dylib $(OUTPUTDIR)/java_runtimes/java-8-openjdk/lib; \
-	cp $(WORKINGDIR)/libawt_xawt.dylib $(OUTPUTDIR)/java_runtimes/java-17-openjdk/lib;
-	cp $(WORKINGDIR)/libawt_xawt.dylib $(OUTPUTDIR)/java_runtimes/java-21-openjdk/lib
-	cp $(WORKINGDIR)/libawt_xawt.dylib $(OUTPUTDIR)/java_runtimes/java-25-openjdk/lib
+	for v in 8 17 21 25; do \
+		if [ -d $(SOURCEDIR)/depends/java-$$v-openjdk ]; then \
+			cp -R $(SOURCEDIR)/depends/java-$$v-openjdk $(OUTPUTDIR)/java_runtimes; \
+			cp $(WORKINGDIR)/libawt_xawt.dylib $(OUTPUTDIR)/java_runtimes/java-$$v-openjdk/lib; \
+		fi; \
+	done
 	echo '[Lumen Craft v$(VERSION)] jre - end'
 
 dep_mg:
